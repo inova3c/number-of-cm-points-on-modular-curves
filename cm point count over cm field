@@ -1,1 +1,140 @@
-g
+load "cmdata.txt";
+
+// Add -Id to H
+AttachMinusIdentity := function(N, H)
+    R := Integers(N);
+    minusId := -Identity(GL(2,R));
+    return sub< GL(2,R) | Generators(H) join { minusId } >;
+end function;
+
+
+function AllDoubleCosets(G, H, A)
+    G_set := Set(G);
+    H_set := Set(H);
+    A_set := Set(A);
+   
+    double_cosets := [];
+    remaining := G_set;
+   
+    while #remaining gt 0 do
+        g := Random(remaining);
+       
+        // Manually compute H * {g} * A = {h * g * a : h in H, a in A}
+        double_coset := {h * g * a : h in H_set, a in A_set};
+       
+        Append(~double_cosets, <g, double_coset>);
+        remaining diff:= double_coset;
+    end while;
+   
+    return double_cosets;
+end function;
+
+// Build C_{delta,phi}(N)
+BuildCdeltaPhi := function(N, delta, phi)
+    R := Integers(N);
+    G := GL(2,R);
+    mats := [ ];
+    for a in [0..N-1] do
+        for b in [0..N-1] do
+            M := Matrix(R,2,2,[a+b*phi,b,delta*b,a]);
+            if IsInvertible(M) then
+                Append(~mats,M);
+            end if;
+        end for;
+    end for;
+    return sub< G | mats >;
+end function;
+
+// Build N_{delta,phi}(N)
+BuildNdeltaPhi := function(N, delta, phi)
+    R := Integers(N);
+    G := GL(2,R);
+    mats := [ ];
+    for a in [0..N-1] do
+        for b in [0..N-1] do
+            M := Matrix(R,2,2,[a+b*phi,b,delta*b,a]);
+            if IsInvertible(M) then
+                Append(~mats,M);
+            end if;
+        end for;
+    end for;
+    extra := Matrix(R,2,2,[-1,0,phi,1]);
+    Append(~mats,extra);
+    return sub< G | mats >;
+end function;
+
+//function for number of points on a modular curve above a rational CM j-invariant defined over the CM field of j
+
+CMPointCountAboveCMField := procedure(N,H,j)
+    RZ := Integers(N);
+    G := GL(2,RZ);
+
+    H := AttachMinusIdentity(N,H);
+    total_count := 0;
+
+    for triple in cmlist do
+        if j eq triple[3] then
+			d := triple[1];
+        	f := triple[2];
+		end if;
+	end for;
+    // compute delta and phi
+    if (d*f^2) mod 4 eq 0 then
+        delta := (d*f^2) div 4;
+        phi := 0;
+    else
+        delta := ((d-1) div 4) * f^2;
+        phi := f;
+    end if;
+
+    deltaR := RZ!delta;
+    phiR := RZ!phi;
+
+    // build R
+    R := BuildCdeltaPhi(N, deltaR, phiR);
+    count := 0;
+
+    if j ne 0 and j ne 1728 then
+        // generic case: right cosets Hg with gRg^-1 <= H
+        reps := RightTransversal(G, H);
+
+        for g in reps do
+    		ok := true;
+            for r in Generators(R) do
+        		if not (g*r*g^-1 in H) then
+            		ok := false;
+            		break;
+        		end if;
+    		end for;
+    		if ok then
+        	count +:= 1;
+    	end if;
+	    end for;
+    else
+        // special cases: define A
+        if j eq 1728 then
+            A := sub< G | [ Matrix(RZ,2,2,[0,-1,1,0]) ] >;
+        elif j eq 0 then
+            A := sub< G | [ Matrix(RZ,2,2,[1,1,-1,0]) ] >;
+        end if;
+
+		all_dc := AllDoubleCosets(G, H, A);
+        for i in [1..#all_dc] do
+    		if {all_dc[i,1]*r: r in R} subset all_dc[i,2] then
+			count+:=1;
+		end if;
+	    end for;
+        end if;
+        
+    printf "Total points = %o\n", count;
+end procedure;
+
+
+
+
+G:=GL(2, Integers(3));
+H:=sub<G | [1, 0, 0, 2], [1, 1, 0, 2]>;
+#H;
+
+
+CMPointCount(3, H);
