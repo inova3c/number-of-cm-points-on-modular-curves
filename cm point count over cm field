@@ -146,3 +146,5 @@ j2:=16581375;
 CMPointCountAboveCMField(88, H, j1);
 CMPointCountAboveCMField(88, H, j2);
 
+time CMPointCountAboveCMField(88, H, j1);
+time CMPointCountAboveCMField(88, H, j2);
